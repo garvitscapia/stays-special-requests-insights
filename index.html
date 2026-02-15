@@ -1,0 +1,849 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stays Special Requests — Insights Report</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0F1117;
+    --card: #1A1D29;
+    --border: #2A2D3A;
+    --text: #E4E4E7;
+    --muted: #9CA3AF;
+    --accent: #6366F1;
+    --accent2: #22D3EE;
+    --green: #34D399;
+    --amber: #FBBF24;
+    --red: #F87171;
+    --pink: #F472B6;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    padding: 0;
+  }
+  .hero {
+    background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #1e1b4b 100%);
+    padding: 60px 40px 50px;
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+  }
+  .hero h1 {
+    font-size: 2.4rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin-bottom: 8px;
+  }
+  .hero p { color: var(--muted); font-size: 1.1rem; }
+  .container { max-width: 1200px; margin: 0 auto; padding: 32px 24px; }
+
+  .kpi-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+    margin-bottom: 36px;
+  }
+  .kpi {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+  }
+  .kpi .value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--accent2);
+  }
+  .kpi .label {
+    font-size: 0.82rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-top: 4px;
+  }
+
+  .section {
+    margin-bottom: 40px;
+  }
+  .section-title {
+    font-size: 1.4rem;
+    font-weight: 600;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid var(--accent);
+    display: inline-block;
+  }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 20px;
+  }
+  .card h3 {
+    font-size: 1.05rem;
+    font-weight: 600;
+    margin-bottom: 16px;
+    color: var(--accent2);
+  }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+  @media (max-width: 768px) {
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+  }
+
+  .bar-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+    font-size: 0.85rem;
+  }
+  .bar-label {
+    width: 180px;
+    flex-shrink: 0;
+    text-align: right;
+    padding-right: 12px;
+    color: var(--muted);
+  }
+  .bar-track {
+    flex: 1;
+    height: 22px;
+    background: #252836;
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+  }
+  .bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.8s ease;
+  }
+  .bar-value {
+    width: 70px;
+    text-align: right;
+    padding-left: 10px;
+    font-weight: 600;
+    font-size: 0.82rem;
+  }
+
+  .insight-box {
+    background: linear-gradient(135deg, #1e1b4b20, #312e8120);
+    border-left: 3px solid var(--accent);
+    padding: 16px 20px;
+    border-radius: 0 8px 8px 0;
+    margin-top: 16px;
+    font-size: 0.92rem;
+    line-height: 1.7;
+  }
+  .insight-box strong { color: var(--accent2); }
+
+  .tag {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 100px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin: 2px;
+  }
+  .tag-high { background: #F8717130; color: var(--red); }
+  .tag-med { background: #FBBF2430; color: var(--amber); }
+  .tag-low { background: #34D39930; color: var(--green); }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+  }
+  th, td {
+    padding: 10px 14px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  th {
+    color: var(--muted);
+    text-transform: uppercase;
+    font-size: 0.72rem;
+    letter-spacing: 0.06em;
+    font-weight: 600;
+  }
+  td { color: var(--text); }
+  tr:hover td { background: #ffffff08; }
+
+  .chart-container {
+    position: relative;
+    width: 100%;
+    height: 320px;
+  }
+  .chart-container-tall {
+    position: relative;
+    width: 100%;
+    height: 420px;
+  }
+
+  .callout {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    margin-bottom: 14px;
+  }
+  .callout-icon {
+    font-size: 1.6rem;
+    flex-shrink: 0;
+    width: 40px;
+    text-align: center;
+  }
+  .callout-text { font-size: 0.9rem; line-height: 1.6; }
+  .callout-text strong { color: var(--text); }
+
+  .footer {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--muted);
+    font-size: 0.8rem;
+    border-top: 1px solid var(--border);
+  }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <h1>Stays Special Requests — Insights</h1>
+  <p>Analysis of 9,429 special requests · Mar 2023 – Feb 2026</p>
+</div>
+
+<div class="container">
+
+<!-- KPIs -->
+<div class="kpi-row">
+  <div class="kpi">
+    <div class="value">9,429</div>
+    <div class="label">Total Requests</div>
+  </div>
+  <div class="kpi">
+    <div class="value">12.8%</div>
+    <div class="label">Attach Rate</div>
+  </div>
+  <div class="kpi">
+    <div class="value">244%</div>
+    <div class="label">YoY Growth (2024→25)</div>
+  </div>
+  <div class="kpi">
+    <div class="value">34.4%</div>
+    <div class="label">Timing Requests</div>
+  </div>
+  <div class="kpi">
+    <div class="value">30.6%</div>
+    <div class="label">Room & Bed Prefs</div>
+  </div>
+  <div class="kpi">
+    <div class="value">16.9%</div>
+    <div class="label">Celebration Requests</div>
+  </div>
+</div>
+
+<!-- SECTION 1: What People Ask For -->
+<div class="section">
+  <div class="section-title">1. What Do Guests Request?</div>
+
+  <div class="grid-2">
+    <div class="card">
+      <h3>Top-Level Category Breakdown</h3>
+      <div class="chart-container-tall">
+        <canvas id="metaChart"></canvas>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Top 15 Specific Request Types</h3>
+      <div class="chart-container-tall">
+        <canvas id="topCatsChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="insight-box">
+    <strong>Key finding:</strong> Check-in/check-out timing dominates — <strong>1 in 3 requests</strong> is about when the guest will arrive or wants to leave. Room/bed preferences are the second biggest bucket at 30.6%. Celebrations (honeymoons, anniversaries, birthdays) account for nearly <strong>17%</strong> of all requests — this is a surprisingly high emotional-intent segment.
+  </div>
+</div>
+
+<!-- SECTION 2: Timing Deep Dive -->
+<div class="section">
+  <div class="section-title">2. Check-in Timing — The #1 Request</div>
+
+  <div class="grid-2">
+    <div class="card">
+      <h3>Early Check-in: What Time Do Guests Want?</h3>
+      <div class="chart-container">
+        <canvas id="checkinTimeChart"></canvas>
+      </div>
+      <div class="insight-box" style="margin-top:14px">
+        The peak demand is <strong>10 AM – 12 PM</strong>, well before the industry-standard 2–3 PM check-in. Nearly <strong>950 requests</strong> (44% of early check-in asks) are for this window. A meaningful 423 requests (20%) want check-in at 9 AM or earlier, suggesting morning-flight arrivals.
+      </div>
+    </div>
+    <div class="card">
+      <h3>Timing Request Breakdown</h3>
+      <table>
+        <tr><th>Type</th><th>Count</th><th>Share</th></tr>
+        <tr><td>Early Check-in</td><td>2,165</td><td>23.0%</td></tr>
+        <tr><td>Late Check-in / Arrival Time</td><td>1,496</td><td>15.9%</td></tr>
+        <tr><td>Late Check-out</td><td>422</td><td>4.5%</td></tr>
+      </table>
+      <div class="insight-box" style="margin-top:14px">
+        <strong>Opportunity:</strong> 386 requests mention flights/airports, meaning travel schedules are the root cause. <strong>Proactively asking for flight details at booking</strong> could let Scapia auto-coordinate with hotels, reducing manual request handling and improving experience.
+      </div>
+      <div class="insight-box" style="margin-top:10px; border-left-color: var(--amber);">
+        <strong>Late check-in note:</strong> 1,496 guests inform about their late arrival — this is mostly communicational, not a request. Many just say "will reach by 11 PM." Consider adding a structured "expected arrival time" field at booking to capture this without clogging the special requests box.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 3: Celebrations -->
+<div class="section">
+  <div class="section-title">3. Celebrations — High Emotional Intent</div>
+
+  <div class="grid-3">
+    <div class="card">
+      <h3>Anniversary (622)</h3>
+      <div class="callout"><div class="callout-icon">💍</div>
+        <div class="callout-text">Most requested celebration type. Common extras: <strong>cake (84)</strong>, <strong>room upgrade (71)</strong>, decoration. 1st anniversary is the top milestone (35), followed by 10th (18) and 25th (7).</div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Birthday (499)</h3>
+      <div class="callout"><div class="callout-icon">🎂</div>
+        <div class="callout-text"><strong>Wife's birthday</strong> dominates (141 — 28% of birthday requests), then "my birthday" (47), husband (36), daughter (22), kids (22), mother (21). <strong>Cake is the #1 companion request</strong> (118).</div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Honeymoon (416)</h3>
+      <div class="callout"><div class="callout-icon">🏝️</div>
+        <div class="callout-text">Highest-commitment celebration segment. <strong>25% want room decoration</strong>, 12% want a view room, 10% ask for upgrades, 8% want complimentary perks.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Other Occasions Spotted in Requests</h3>
+    <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px;">
+      <span class="tag tag-med">First Wedding Night: ~20</span>
+      <span class="tag tag-med">Baby Shower / Pregnancy: 37</span>
+      <span class="tag tag-med">Proposals / Surprises: ~30</span>
+      <span class="tag tag-low">First Trip Abroad: ~15</span>
+      <span class="tag tag-low">Retirement: ~5</span>
+    </div>
+    <div class="insight-box">
+      <strong>Product idea:</strong> Nearly <strong>1,600 requests (17%)</strong> are celebration-related. A structured "Occasion" field at booking (dropdown: honeymoon, anniversary, birthday, none) would let Scapia pre-build celebration packages, automate hotel coordination, and offer upsells like cakes, decoration, and candle-light dinners — turning free-text chaos into a revenue opportunity.
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 4: Room & Bed Preferences -->
+<div class="section">
+  <div class="section-title">4. Room & Bed Preferences</div>
+
+  <div class="grid-2">
+    <div class="card">
+      <h3>What Guests Want in Their Room</h3>
+      <table>
+        <tr><th>Preference</th><th>Count</th><th>Share</th></tr>
+        <tr><td>King / Double Bed</td><td>828</td><td>8.8%</td></tr>
+        <tr><td>Higher Floor</td><td>699</td><td>7.4%</td></tr>
+        <tr><td>Smoking Room</td><td>641</td><td>6.8%</td></tr>
+        <tr><td>Non-Smoking Room</td><td>432</td><td>4.6%</td></tr>
+        <tr><td>Room View (sea, pool, garden…)</td><td>317</td><td>3.4%</td></tr>
+        <tr><td>Extra Bed / Cot</td><td>247</td><td>2.6%</td></tr>
+        <tr><td>Twin Beds</td><td>185</td><td>2.0%</td></tr>
+        <tr><td>Window / Balcony</td><td>159</td><td>1.7%</td></tr>
+        <tr><td>Bathtub</td><td>126</td><td>1.3%</td></tr>
+        <tr><td>Quiet Room</td><td>89</td><td>0.9%</td></tr>
+        <tr><td>Connecting Rooms</td><td>75</td><td>0.8%</td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <h3>Smoking vs Non-Smoking</h3>
+      <div class="chart-container" style="height:220px">
+        <canvas id="smokingChart"></canvas>
+      </div>
+      <div class="insight-box" style="margin-top:14px">
+        <strong>11.4% of all guests</strong> have a smoking preference (641 smoking + 432 non-smoking = 1,073). 310 requests oddly match BOTH patterns — likely saying "non-smoking room." This is the single most automatable preference: a simple toggle at booking would eliminate 1,000+ special requests.
+      </div>
+      <div class="insight-box" style="margin-top:10px; border-left-color:var(--green)">
+        <strong>Bed type</strong> is the next most automatable: 1,013 requests (king/double + twin) could be a dropdown. Combined with smoking, these two toggles alone would eliminate <strong>~2,000 requests (21%)</strong>.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 5: Growth -->
+<div class="section">
+  <div class="section-title">5. Growth & Volume Trends</div>
+
+  <div class="card">
+    <h3>Monthly Request Volume</h3>
+    <div class="chart-container-tall">
+      <canvas id="monthlyChart"></canvas>
+    </div>
+    <div class="insight-box">
+      <strong>Explosive growth:</strong> From ~30 requests/month in Aug 2023 to <strong>1,009 in Jan 2026</strong> — a 33x increase. The growth accelerated significantly from mid-2025 onward, with H2 2025 averaging ~750/month vs H1 2025 at ~230/month. Feb 2026 is on track for another record month (459 already by the 13th).
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Attach Rate: Stable at ~12.8%</h3>
+    <div class="chart-container">
+      <canvas id="attachRateChart"></canvas>
+    </div>
+    <div class="insight-box">
+      Despite a <strong>6x growth in total booking volume</strong> from Jan 2024 to Dec 2025, the attach rate has remained remarkably flat at ~12.8%. This stability suggests the current free-text input acts as a ceiling — only users who already know what to ask for are using it. A structured form could unlock the remaining 87%.
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 6: Family & Accessibility -->
+<div class="section">
+  <div class="section-title">6. Family Travellers & Accessibility</div>
+
+  <div class="grid-2">
+    <div class="card">
+      <h3>Family-Related Requests</h3>
+      <div class="callout"><div class="callout-icon">👶</div>
+        <div class="callout-text"><strong>369 requests</strong> mention infants, babies, toddlers, or children. Common asks: extra bed/cot (247), ground floor for safety (48), connecting rooms (75). These families have specific needs that require proactive hotel coordination.</div>
+      </div>
+      <div class="callout"><div class="callout-icon">🤰</div>
+        <div class="callout-text"><strong>37 pregnant travellers</strong> mentioned pregnancy explicitly, often asking for ground floor, extra pillows, or specific food.</div>
+      </div>
+      <div class="callout"><div class="callout-icon">🐾</div>
+        <div class="callout-text"><strong>20 pet owners</strong> asked about pet-friendly accommodation.</div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Accessibility & Special Needs</h3>
+      <div class="callout"><div class="callout-icon">♿</div>
+        <div class="callout-text"><strong>33 requests</strong> mention wheelchairs, elderly guests, senior citizens, or disability needs. Typical ask: ground floor + accessible bathroom.</div>
+      </div>
+      <div class="callout"><div class="callout-icon">🥗</div>
+        <div class="callout-text"><strong>Dietary needs</strong> are a growing segment: 64 vegetarian, 49 Jain, 14 no-onion-no-garlic requests. These require specific hotel coordination that could benefit from structured input.</div>
+      </div>
+      <div class="insight-box" style="margin-top:14px">
+        <strong>Unmarried couple concern:</strong> 123 requests mention "couple," "unmarried," or similar — some explicitly worry about hotel acceptance. This is a real pain point in certain Indian markets. A "couple-friendly" hotel tag could address this proactively.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 7: Communication Patterns -->
+<div class="section">
+  <div class="section-title">7. How Guests Communicate</div>
+
+  <div class="grid-2">
+    <div class="card">
+      <h3>Tone of Requests</h3>
+      <div class="chart-container" style="height:200px">
+        <canvas id="toneChart"></canvas>
+      </div>
+      <div class="insight-box" style="margin-top:14px">
+        <strong>38% of guests use polite language</strong> (please, kindly, if possible). Only 12% are firm/demanding (must, mandatory, need). <strong>5% are emotionally expressive</strong> (dream, memorable, special) — these overlap heavily with celebration requests.
+      </div>
+    </div>
+    <div class="card">
+      <h3>Request Complexity</h3>
+      <table>
+        <tr><th>Distinct Ask Types</th><th>Bookings</th><th>Share</th></tr>
+        <tr><td>0 (uncategorized / vague)</td><td>2,612</td><td>27.7%</td></tr>
+        <tr><td>1 specific ask</td><td>4,981</td><td>52.8%</td></tr>
+        <tr><td>2 asks</td><td>1,411</td><td>15.0%</td></tr>
+        <tr><td>3+ asks</td><td>425</td><td>4.5%</td></tr>
+      </table>
+      <div class="insight-box" style="margin-top:14px">
+        <strong>Most guests have just one clear ask</strong> (53%). But 20% combine 2+ asks — most commonly: birthday + cake, early check-in + higher floor, anniversary + upgrade. The ops team handles these multi-request bookings with more effort.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 8: Top Combinations -->
+<div class="section">
+  <div class="section-title">8. Most Common Request Combinations</div>
+
+  <div class="card">
+    <h3>Top Paired Requests</h3>
+    <div class="chart-container-tall">
+      <canvas id="combosChart"></canvas>
+    </div>
+    <div class="insight-box">
+      The top combo — "Non-Smoking + Smoking" (310) — is actually a data artifact: these are guests saying "non-smoking room" whose text matches both patterns. Real top combos: <strong>Birthday + Cake (118), Higher Floor + Smoking (100), Higher Floor + Non-Smoking (96), Anniversary + Cake (84), Anniversary + Upgrade (71).</strong> This confirms that celebrations drive multi-line requests and that floor/smoking preferences frequently co-occur.
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 9: Operational -->
+<div class="section">
+  <div class="section-title">9. Misc & Operational Requests</div>
+
+  <div class="grid-2">
+    <div class="card">
+      <h3>Misc Request Types</h3>
+      <table>
+        <tr><th>Type</th><th>Count</th></tr>
+        <tr><td>Cleanliness / Hygiene concerns</td><td>246</td></tr>
+        <tr><td>GST / Billing requests</td><td>163</td></tr>
+        <tr><td>Unmarried couple concerns</td><td>123</td></tr>
+        <tr><td>Transport / Cab</td><td>114</td></tr>
+        <tr><td>Quiet room preference</td><td>89</td></tr>
+        <tr><td>Parking requests</td><td>77</td></tr>
+        <tr><td>Pool / Swimming interest</td><td>76</td></tr>
+        <tr><td>International dest. mentions</td><td>58</td></tr>
+        <tr><td>Airport pickup/drop</td><td>43</td></tr>
+        <tr><td>Pregnant travellers</td><td>37</td></tr>
+        <tr><td>WhatsApp / Contact sharing</td><td>31</td></tr>
+        <tr><td>Pet-friendly requests</td><td>20</td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <h3>Notable Patterns</h3>
+      <div class="callout"><div class="callout-icon">🧹</div>
+        <div class="callout-text"><strong>246 guests</strong> explicitly ask for clean rooms — suggesting either past bad experiences or anxiety. A post-booking reassurance message about hotel standards could help.</div>
+      </div>
+      <div class="callout"><div class="callout-icon">🧾</div>
+        <div class="callout-text"><strong>163 GST/billing requests</strong> are purely operational. A "GST details" field in the booking flow would remove these entirely.</div>
+      </div>
+      <div class="callout"><div class="callout-icon">📱</div>
+        <div class="callout-text"><strong>31 guests share WhatsApp numbers</strong> in requests, expecting direct hotel communication. Consider enabling a hotel-guest chat channel.</div>
+      </div>
+      <div class="callout"><div class="callout-icon">🚗</div>
+        <div class="callout-text"><strong>114 transport requests</strong> (cabs, airport pickup) represent an upsell opportunity. An add-on airport transfer service could serve this need.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 10: Recommendations -->
+<div class="section">
+  <div class="section-title">10. Top Recommendations</div>
+
+  <div class="card" style="border-left: 3px solid var(--accent);">
+    <table>
+      <tr><th style="width:40px">#</th><th>Recommendation</th><th>Impact</th><th>Requests Addressed</th></tr>
+      <tr>
+        <td>1</td>
+        <td><strong>Add "Expected Arrival Time" field</strong> at booking. Most timing requests (38.9%) are just communicating arrival — not asking for anything special.</td>
+        <td><span class="tag tag-high">HIGH</span></td>
+        <td>~3,660 (38.9%)</td>
+      </tr>
+      <tr>
+        <td>2</td>
+        <td><strong>Add Smoking/Non-Smoking toggle</strong> and <strong>Bed Type dropdown</strong> (King/Twin). Two simple fields eliminate 2,000+ free-text requests.</td>
+        <td><span class="tag tag-high">HIGH</span></td>
+        <td>~2,080 (22%)</td>
+      </tr>
+      <tr>
+        <td>3</td>
+        <td><strong>Add "Occasion" dropdown</strong> (Honeymoon, Anniversary, Birthday, None) with optional milestone input. Enables celebration packages and automated hotel coordination.</td>
+        <td><span class="tag tag-high">HIGH</span></td>
+        <td>~1,600 (17%)</td>
+      </tr>
+      <tr>
+        <td>4</td>
+        <td><strong>Add "Floor Preference" toggle</strong> (Higher/Lower/No preference). 747 requests (8%) are about floor choice alone.</td>
+        <td><span class="tag tag-med">MEDIUM</span></td>
+        <td>747 (7.9%)</td>
+      </tr>
+      <tr>
+        <td>5</td>
+        <td><strong>Add "GST Details" field</strong> in billing section. Removes 163 purely operational requests from the special requests box.</td>
+        <td><span class="tag tag-med">MEDIUM</span></td>
+        <td>163 (1.7%)</td>
+      </tr>
+      <tr>
+        <td>6</td>
+        <td><strong>Offer celebration add-ons</strong> (cake, decoration, candle dinner) as purchasable extras when an occasion is selected. Revenue opportunity from 17% of bookings.</td>
+        <td><span class="tag tag-med">MEDIUM</span></td>
+        <td>Revenue upside</td>
+      </tr>
+      <tr>
+        <td>7</td>
+        <td><strong>Add "Couple-friendly" badge</strong> to hotel listings. 123 requests express anxiety about unmarried couple acceptance.</td>
+        <td><span class="tag tag-low">LOW</span></td>
+        <td>123 (1.3%)</td>
+      </tr>
+      <tr>
+        <td>8</td>
+        <td><strong>Offer airport transfer service</strong> as a booking add-on. 114 transport + 43 airport pickup requests = untapped ancillary revenue.</td>
+        <td><span class="tag tag-low">LOW</span></td>
+        <td>157 (1.7%)</td>
+      </tr>
+    </table>
+  </div>
+</div>
+
+</div> <!-- /container -->
+
+<div class="footer">
+  Scapia Stays · Special Requests Analysis · Data through 13 Feb 2026
+</div>
+
+<script>
+// Color palette
+const COLORS = {
+  accent: '#6366F1',
+  accent2: '#22D3EE',
+  green: '#34D399',
+  amber: '#FBBF24',
+  red: '#F87171',
+  pink: '#F472B6',
+  purple: '#A78BFA',
+  orange: '#FB923C',
+  teal: '#2DD4BF',
+  slate: '#94A3B8',
+};
+const palette = [COLORS.accent, COLORS.accent2, COLORS.green, COLORS.amber, COLORS.red, COLORS.pink, COLORS.purple, COLORS.orange, COLORS.teal, COLORS.slate];
+
+Chart.defaults.color = '#9CA3AF';
+Chart.defaults.borderColor = '#2A2D3A';
+Chart.defaults.font.family = '-apple-system, system-ui, sans-serif';
+
+// 1. Meta categories doughnut
+new Chart(document.getElementById('metaChart'), {
+  type: 'doughnut',
+  data: {
+    labels: ['Check-in/out Timing', 'Room & Bed Prefs', 'Celebrations', 'Upgrades & Freebies', 'Family-Specific', 'Food & Dietary', 'Transport', 'Facilities'],
+    datasets: [{
+      data: [3247, 2882, 1596, 459, 419, 190, 129, 48],
+      backgroundColor: palette,
+      borderWidth: 0,
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { position: 'right', labels: { boxWidth: 12, padding: 10, font: { size: 11 } } }
+    },
+    cutout: '55%',
+  }
+});
+
+// 2. Top categories bar
+new Chart(document.getElementById('topCatsChart'), {
+  type: 'bar',
+  data: {
+    labels: ['Early Check-in', 'Late Check-in Info', 'King/Double Bed', 'Higher Floor', 'Smoking Room', 'Anniversary', 'Birthday', 'Non-Smoking', 'Late Check-out', 'Honeymoon', 'Infant/Child', 'Room View', 'Complimentary', 'Room Upgrade', 'Extra Bed/Cot'],
+    datasets: [{
+      data: [2165, 1496, 828, 699, 641, 622, 499, 432, 422, 416, 369, 317, 281, 271, 247],
+      backgroundColor: '#6366F180',
+      borderColor: '#6366F1',
+      borderWidth: 1,
+      borderRadius: 4,
+    }]
+  },
+  options: {
+    indexAxis: 'y',
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { color: '#1f2233' } },
+      y: { grid: { display: false }, ticks: { font: { size: 11 } } }
+    }
+  }
+});
+
+// 3. Check-in time chart
+new Chart(document.getElementById('checkinTimeChart'), {
+  type: 'bar',
+  data: {
+    labels: ['5 AM', '6 AM', '7 AM', '8 AM', '9 AM', '10 AM', '11 AM', '12 PM', '1 PM', '2 PM', '3 PM'],
+    datasets: [{
+      data: [65, 94, 114, 154, 191, 304, 309, 338, 124, 52, 46],
+      backgroundColor: function(ctx) {
+        return ctx.dataIndex >= 4 && ctx.dataIndex <= 7 ? '#22D3EE' : '#22D3EE40';
+      },
+      borderRadius: 4,
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      y: { grid: { color: '#1f2233' }, ticks: { font: { size: 10 } } },
+      x: { grid: { display: false }, ticks: { font: { size: 10 } } }
+    }
+  }
+});
+
+// 4. Smoking chart
+new Chart(document.getElementById('smokingChart'), {
+  type: 'doughnut',
+  data: {
+    labels: ['Smoking Room', 'Non-Smoking Room', 'No Preference Stated'],
+    datasets: [{
+      data: [641, 432, 8356],
+      backgroundColor: ['#FB923C', '#34D399', '#2A2D3A'],
+      borderWidth: 0,
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { position: 'bottom', labels: { boxWidth: 12, padding: 10, font: { size: 11 } } }
+    },
+    cutout: '60%',
+  }
+});
+
+// 5. Monthly volume
+new Chart(document.getElementById('monthlyChart'), {
+  type: 'line',
+  data: {
+    labels: ['Mar23','Apr23','Jun23','Jul23','Aug23','Sep23','Oct23','Nov23','Dec23','Jan24','Feb24','Mar24','Apr24','May24','Jun24','Jul24','Aug24','Sep24','Oct24','Nov24','Dec24','Jan25','Feb25','Mar25','Apr25','May25','Jun25','Jul25','Aug25','Sep25','Oct25','Nov25','Dec25','Jan26','Feb26*'],
+    datasets: [{
+      data: [1,1,1,7,29,48,62,98,115,117,133,127,116,151,134,137,172,136,150,175,165,157,144,161,227,305,399,582,630,724,708,852,997,1009,459],
+      fill: true,
+      backgroundColor: '#6366F120',
+      borderColor: '#6366F1',
+      borderWidth: 2,
+      pointRadius: 2,
+      tension: 0.3,
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      y: { grid: { color: '#1f2233' }, ticks: { font: { size: 10 } } },
+      x: { grid: { display: false }, ticks: { font: { size: 9 }, maxRotation: 45 } }
+    }
+  }
+});
+
+// 6. Attach rate chart
+new Chart(document.getElementById('attachRateChart'), {
+  type: 'bar',
+  data: {
+    labels: ['Q1 2024','Q2 2024','Q3 2024','Q4 2024','Q1 2025','Q2 2025','Q3 2025','Q4 2025'],
+    datasets: [
+      {
+        label: 'Total COMPLETE Orders',
+        data: [1231, 1705, 2408, 3268, 3202, 6053, 11542, 17312],
+        backgroundColor: '#6366F140',
+        borderColor: '#6366F1',
+        borderWidth: 1,
+        borderRadius: 4,
+        yAxisID: 'y',
+      },
+      {
+        label: 'Attach Rate %',
+        data: [12.5, 12.9, 12.7, 12.6, 12.8, 12.7, 13.5, 12.9],
+        type: 'line',
+        borderColor: '#22D3EE',
+        backgroundColor: '#22D3EE',
+        pointRadius: 5,
+        pointBackgroundColor: '#22D3EE',
+        borderWidth: 2,
+        yAxisID: 'y1',
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { position: 'bottom', labels: { boxWidth: 12, padding: 16, font: { size: 11 } } }
+    },
+    scales: {
+      y: {
+        grid: { color: '#1f2233' },
+        ticks: { font: { size: 10 } },
+        title: { display: true, text: 'Total Orders', color: '#9CA3AF', font: { size: 10 } },
+      },
+      y1: {
+        position: 'right',
+        grid: { display: false },
+        min: 0, max: 20,
+        ticks: { callback: v => v + '%', font: { size: 10 } },
+        title: { display: true, text: 'Attach Rate', color: '#22D3EE', font: { size: 10 } },
+      },
+      x: { grid: { display: false }, ticks: { font: { size: 10 } } }
+    }
+  }
+});
+
+// 7. Tone chart
+new Chart(document.getElementById('toneChart'), {
+  type: 'bar',
+  data: {
+    labels: ['Polite / Courteous', 'Firm / Demanding', 'Emotional / Sentimental'],
+    datasets: [{
+      data: [38.1, 12.2, 5.0],
+      backgroundColor: ['#34D39980', '#FBBF2480', '#F472B680'],
+      borderColor: ['#34D399', '#FBBF24', '#F472B6'],
+      borderWidth: 1,
+      borderRadius: 6,
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      y: { grid: { color: '#1f2233' }, ticks: { callback: v => v + '%', font: { size: 10 } } },
+      x: { grid: { display: false }, ticks: { font: { size: 11 } } }
+    }
+  }
+});
+
+// 8. Combos chart
+new Chart(document.getElementById('combosChart'), {
+  type: 'bar',
+  data: {
+    labels: [
+      'Birthday + Cake',
+      'Higher Floor + Smoking',
+      'Higher Floor + Non-Smoking',
+      'Anniversary + Cake',
+      'King Bed + Smoking',
+      'Anniversary + Upgrade',
+      'Early Check-in + Higher Floor',
+      'Higher Floor + King Bed',
+      'King Bed + Non-Smoking',
+      'Early Check-in + Late Check-out',
+      'Veg Food + Breakfast',
+      'Early Check-in + Smoking',
+      'Early Check-in + Infant/Child',
+      'Anniversary + Early Check-in',
+      'Early Check-in + King Bed',
+    ],
+    datasets: [{
+      data: [118, 100, 96, 84, 82, 71, 71, 66, 58, 57, 53, 53, 53, 53, 47],
+      backgroundColor: '#22D3EE40',
+      borderColor: '#22D3EE',
+      borderWidth: 1,
+      borderRadius: 4,
+    }]
+  },
+  options: {
+    indexAxis: 'y',
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { color: '#1f2233' } },
+      y: { grid: { display: false }, ticks: { font: { size: 10.5 } } }
+    }
+  }
+});
+</script>
+
+</body>
+</html>
